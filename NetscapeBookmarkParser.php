@@ -6,6 +6,7 @@ use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 use Katzgrau\KLogger\Logger;
+use Closure;
 
 /**
  * Generic Netscape bookmark parser
@@ -18,6 +19,7 @@ class NetscapeBookmarkParser implements LoggerAwareInterface
     protected $normalizeDates;
     protected $dateRange;
     protected $items;
+    protected $tagsClosure = null;
 
     /**
      * @var LoggerInterface instance.
@@ -178,6 +180,7 @@ class NetscapeBookmarkParser implements LoggerAwareInterface
                 if (preg_match('/(tags?|labels?|folders?)="(.*?)"/i', $line, $m7)) {
                     $tags = array_merge($tags, explode(' ', strtr($m7[2], ',', ' ')));
                 }
+                $tags = $this->preProcessTags($tags);
                 $this->items[$i]['tags'] = implode(' ', $tags);
                 $this->logger->debug('[#' . $line_no . '] Tag list: '. $this->items[$i]['tags']);
 
@@ -395,5 +398,33 @@ class NetscapeBookmarkParser implements LoggerAwareInterface
     public function setLogger(LoggerInterface $logger)
     {
         $this->logger = $logger;
+    }
+
+    /**
+     * Set the closure to use for tag pre-processing
+     *
+     * @param Closure
+     * @author Ronan Chilvers <ronan@d3r.com>
+     */
+    public function setTagsClosure(Closure $closure)
+    {
+        $this->tagsClosure = $closure;
+    }
+
+    /**
+     * Pre-process the tags array
+     *
+     * @param array $tags
+     * @return array
+     * @author Ronan Chilvers <ronan@d3r.com>
+     */
+    protected function preProcessTags($tags)
+    {
+        if ($this->tagsClosure instanceof Closure) {
+            $closure = $this->tagsClosure;
+            $tags = $closure($tags);
+        }
+
+        return $tags;
     }
 }
